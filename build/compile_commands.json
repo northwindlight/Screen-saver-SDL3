@@ -1,0 +1,14 @@
+[
+{
+  "directory": "/home/northwind/sdl3/build",
+  "command": "/usr/bin/aarch64-linux-gnu-g++ -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/Clock.dir/clock.cpp.o -c /home/northwind/sdl3/clock.cpp",
+  "file": "/home/northwind/sdl3/clock.cpp",
+  "output": "CMakeFiles/Clock.dir/clock.cpp.o"
+},
+{
+  "directory": "/home/northwind/sdl3/build",
+  "command": "/usr/bin/aarch64-linux-gnu-g++ -O3 -DNDEBUG -std=gnu++20 -o CMakeFiles/Clock.dir/EventThread.cpp.o -c /home/northwind/sdl3/EventThread.cpp",
+  "file": "/home/northwind/sdl3/EventThread.cpp",
+  "output": "CMakeFiles/Clock.dir/EventThread.cpp.o"
+}
+]

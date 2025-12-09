@@ -31,12 +31,9 @@ private:
     intptr_t cur_level = 0;
     uint8_t charge_status = 0;
     uint8_t sshd_status_ = 0;
-    char ifaddr_[20] = { 0 };
-    
 
 public:
     const int event_nums = 7;
-    const int sensors_nums = 27;
     std::atomic<bool> lightScreen = true;
     std::mutex mtx;
     std::condition_variable cv;

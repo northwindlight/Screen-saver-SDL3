@@ -1,0 +1,3 @@
+/home/northwind/sdl3/build/CMakeFiles/Clock.dir
+/home/northwind/sdl3/build/CMakeFiles/edit_cache.dir
+/home/northwind/sdl3/build/CMakeFiles/rebuild_cache.dir

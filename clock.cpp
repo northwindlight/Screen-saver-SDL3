@@ -28,7 +28,7 @@ static SDL_Color color = { 255, 255, 255, SDL_ALPHA_OPAQUE };
 static EventThread* eventthread = nullptr;
 
 static TextureWrapper sshd, sshd_status, ifaddr, fuck, battery, level, temp; //我生气了，不让我用clock变量名，因为EventThread.h中使用了#include ctime 重定义了，没有命名空间标准库头文件污染人，能不能死一死啊
-static SDL_Texture* ChangeLevel(int level)
+static SDL_Texture* ChangeLevel(const int& level)
 {
     if (level >= 90) {
         return battery_100_texture;
@@ -272,14 +272,33 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event)
 
     if (event->type == eventthread->event_code + 5) {
         redraw();
-        SDL_Surface* text = TTF_RenderText_Blended(font_55, (char*)event->user.data1, strlen((char*)event->user.data1), color);
+        std::vector<SDL_Surface*> surfaces;
+        for(const auto& name : *(std::vector<std::string>*)event->user.data1) {
+            surfaces.push_back(TTF_RenderText_Blended(font_55, name.c_str(), name.length(), color));
+        }
+        delete (std::vector<std::string>*)event->user.data1;
+        std::sort(surfaces.begin(), surfaces.end(), [](SDL_Surface* a, SDL_Surface* b){
+            return a->w > b->w;
+        });
+        SDL_Surface* text = SDL_CreateSurface(
+                    surfaces[0]->w,
+                    surfaces[0]->h * surfaces.size(),
+                    SDL_PIXELFORMAT_RGBA8888
+                );
+        SDL_Rect dst = {0, 0, 0, 0};
+        for(const auto& surf : surfaces) {
+            if(SDL_BlitSurface(surf, nullptr, text, &dst)) {
+                dst.y += surf->h;
+            }
+            SDL_DestroySurface(surf);
+        }
         if (text) {
             ifaddr.destroy();
             ifaddr.setTexture(SDL_CreateTextureFromSurface(renderer, text));
         }
         SDL_DestroySurface(text);
         ifaddr.setPosition(screen_w / 2.0f, screen_h / 18.0f);
-        delete[] (char*)event->user.data1;
+        
     }
     if (event->type == eventthread->event_code + 6) {
         frameCount_OFF = 5;

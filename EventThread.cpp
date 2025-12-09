@@ -1,39 +1,41 @@
 #include "EventThread.h"
 
-void getIp(const char* ifname, char* ip, size_t len) {
+void getIp(std::vector<std::string>& ifname) {
     struct ifaddrs *ifaddr, *ifa;
-
+    char ip[60] = { 0 };
+    ifname.clear();
     if (getifaddrs(&ifaddr) == -1) {
-        strcpy(ip, "network error");
+        ifname.push_back("network error");
         return;
     }
     
     for (ifa = ifaddr; ifa != nullptr; ifa = ifa->ifa_next) {
-        // 检查是否为目标网卡
-        if (!strcmp(ifa->ifa_name, ifname)) {// 找到了网卡
-            
+        //if (!strcmp(ifa->ifa_name, "lo")) 
+            //continue;
             // 如果这个条目没有地址信息，跳过
-            if (ifa->ifa_addr == nullptr)
-                continue;
-            
-            if (ifa->ifa_addr->sa_family == AF_INET) {
-                struct sockaddr_in *addr = (struct sockaddr_in *)ifa->ifa_addr;
-                inet_ntop(AF_INET, &addr->sin_addr, ip, len);
-                freeifaddrs(ifaddr);
-                return;
-            }
+        if (ifa->ifa_addr == nullptr )
+            continue;
+        
+        if (ifa->ifa_addr->sa_family == AF_INET) {
+            struct sockaddr_in *addr = (struct sockaddr_in *)ifa->ifa_addr;
+            inet_ntop(AF_INET, &addr->sin_addr, ip, sizeof(ip));
+            //if(strcmp(ip, "127.0.0.1")){
+                ifname.push_back(std::string(ifa->ifa_name) + ": " + std::string(ip));
+                SDL_Log("Interface: %s\tAddress: %s\n", ifa->ifa_name, ip);
+            //}
         }
     }
     freeifaddrs(ifaddr);
-    strcpy(ip, "no network");
+    if(ifname.empty()) {
+        ifname.push_back("no network");
+    }
+    return;
 }
 
-void loadData(std::vector<std::pair<std::string, int>>& sensors, const int& nums)
+void loadData(std::vector<std::pair<std::string, int>>& sensors,const std::vector<std::string>& sensor_names)
 {
     sensors.clear();
-    for (int i = 0; i <= nums; i++) {
-        std::string path = "/sys/class/thermal/thermal_zone" + std::to_string(i);
-        
+    for (const auto& path : sensor_names) {
         std::ifstream type_file(path + "/type");
         std::ifstream temp_file(path + "/temp");
         
@@ -69,8 +71,19 @@ void EventThread::run() {
     std::string status_str;
     bool is_charging = 0;
     bool is_sshd = 0;
-    char old_ifaddr[20] = "N/A";
     std::vector<std::pair<std::string, int>> sensors;
+    std::vector<std::string> sensor_names;
+    std::vector<std::string> ifname;
+    std::vector<std::string> old_ifname;
+    std::string path = "/sys/class/thermal/";
+    if (std::filesystem::exists(path)) {
+        for(const auto& entry : std::filesystem::directory_iterator(path)) {
+            std::string name = entry.path().filename().string();
+            if (name.find("thermal_zone") != std::string::npos) {
+                sensor_names.push_back(path + name);
+            }
+        }
+    }
     while (running) {
         // 时间
         now = time(0);
@@ -122,9 +135,9 @@ void EventThread::run() {
             SDL_PushEvent(&event);
         }
 
-        if (turns % 8 == 0) {
+        if (turns % 8 == 0 && !sensor_names.empty()) {
 
-            loadData(sensors, sensors_nums);
+            loadData(sensors, sensor_names);
             Temp* temp = new Temp;
             strcpy(temp->type1, [&sensors](){
                 if (sensors.empty()) return "Unknown";
@@ -158,17 +171,16 @@ void EventThread::run() {
             SDL_PushEvent(&event);
         }
 
-        if (turns % 4 == 0) {
-            getIp("wlan0", ifaddr_, sizeof(ifaddr_));
-            if(strcmp(ifaddr_, old_ifaddr)) {
-                strcpy(old_ifaddr, ifaddr_);
-                char* ifaddr_str = new char[30]{ 0 };
-                snprintf(ifaddr_str, 30, "wlan0:  %s", ifaddr_);
+        if (turns % 6 == 0) {
+            getIp(ifname);
+            if(ifname != old_ifname) {
+                old_ifname = ifname;
                 SDL_Event event{ .type = event_code + 5 };
-                event.user.data1 = ifaddr_str;
+                std::vector<std::string>* push_ifname = new std::vector<std::string>(ifname);
+                event.user.data1 = push_ifname;
                 if(!SDL_PushEvent(&event)) {
                     SDL_Log("Failed to push: %s\n", SDL_GetError());
-                    delete[] ifaddr_str;
+                    delete push_ifname;
                 }
             }  
         }
